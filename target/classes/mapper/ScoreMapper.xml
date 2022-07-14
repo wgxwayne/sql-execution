@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="indi.wgx.mapper.ScoreMapper">
+    <resultMap id="allFieldInformationMap" type="indi.wgx.vo.AllFieldVo">
+        <id property="projectVersionId" column="project_version_id" ></id>
+        <result property="projectId" column="project_id"></result>
+        <result property="projectName" column="project_name"></result>
+        <result property="projectVersion" column="project_version"></result>
+
+        <result property="sqlTemplateId" column="sql_template_id"></result>
+        <result property="sqlTemplate" column="sql_template"></result>
+        <result property="templateScore" column="template_score"></result>
+        <result property="databaseName" column="database_name"></result>
+        <result property="tableName" column="table_name"></result>
+        <result property="minScoreSqlContext" column="min_score_sql_context"></result>
+        <result property="averageSqlTime" column=" average_sql_time"></result>
+        <result property="maxSqlTime" column="max_sql_time"></result>
+        <result property="minSqlTime" column="min_sql_time"></result>
+
+
+        <result property="executionId" column="execution_id"></result>
+        <result property="sqlContent" column="sql_content"></result>
+        <result property="contentScore" column="content_score"></result>
+        <result property="sqlTime" column="sql_time"></result>
+        <result property="timeScore" column="time_score"></result>
+
+        <result property="dimensionId" column="dimension_id"></result>
+        <result property="executionField" column="execution_field"></result>
+        <result property="rowsNum" column="rows_num"></result>
+        <result property="value" column="value"></result>
+        <result property="fieldScore" column="field_score"></result>
+    </resultMap>
+
+
+    <!--https://blog.csdn.net/weixin_43591980/article/details/121801677-->
+
+<!--    <select id="getAllFieldInformation" resultMap="allFieldInformationMap">-->
+<!--        select pv.project_version_id, project_id, project_name, project_version, st.sql_template_id, sql_template,-->
+<!--               template_score, database_name, table_name, min_score_sql_context, average_sql_time, max_sql_time, min_sql_time, se.execution_id, sql_content, content_score,-->
+<!--               sql_time, time_score, dimension_id, execution_field, rows_num, value, field_score-->
+<!--        from project_version pv-->
+<!--                 left join (select distinct sql_template_id, project_version_id, sql_template,-->
+<!--                                            template_score, database_name, table_name,-->
+<!--                                            min_score_sql_context, average_sql_time, max_sql_time, min_sql_time from sql_template ) as st-->
+<!--                           on pv.project_version_id = st.project_version_id-->
+<!--                 left join (select distinct execution_id, sql_template_id, sql_content, content_score,sql_time, time_score from sql_execution) as se-->
+<!--                           on st.sql_template_id = se.sql_template_id-->
+<!--                 left join (select distinct dimension_id, execution_id, execution_field, rows_num, value, field_score from sql_dimension) as sd-->
+<!--                           on se.execution_id = sd.execution_id-->
+<!--        where pv.project_version_id = #{projectVersionId};-->
+<!--    </select>-->
+
+    <select id="getAllFieldInformation" resultMap="allFieldInformationMap">
+        select pv.project_version_id, project_id, project_name, project_version, st.sql_template_id, sql_template,
+               template_score, database_name, table_name, min_score_sql_context, average_sql_time, max_sql_time, min_sql_time, se.execution_id, sql_content, content_score,
+               sql_time, time_score, dimension_id, execution_field, rows_num, value, field_score
+        from project_version pv
+                 left join sql_template st
+                           on pv.project_version_id = st.project_version_id
+                 left join sql_execution se
+                           on st.sql_template_id = se.sql_template_id
+                 left join sql_dimension sd
+                           on se.execution_id = sd.execution_id
+        where pv.project_version_id = #{projectVersionId};
+    </select>
+
+
+
+
+
+
+    <!-- 接收list参数，循环着组装sql语句，注意for循环的写法
+             separator=";" 代表着每次循环完，在sql后面放一个分号
+             item="cus" 循环List的每条的结果集
+             collection="list" list 即为 map传过来的参数key -->
+    <update id="updateAllScore" parameterType="java.util.List">
+            <foreach collection="list" separator=";" item="res">
+                update sql_dimension set field_score = #{res.fieldScore} where dimension_id = #{res.dimensionId}
+            </foreach>;
+            <foreach collection="list" separator=";" item="res">
+                update sql_execution set content_score = #{res.contentScore}, time_score= #{res.timeScore} where execution_id = #{res.executionId}
+            </foreach>;
+            <foreach collection="list" separator=";" item="res">
+                update sql_template set template_score = #{res.templateScore}, min_score_sql_context = #{res.minScoreSqlContext}, average_sql_time = #{res.averageSqlTime}, max_sql_time = #{res.maxSqlTime}, min_sql_time = #{res.minSqlTime} where sql_template_id = #{res.sqlTemplateId}
+            </foreach>
+    </update>
+
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="indi.wgx.mapper.ProjectMapper">
+
+    <!--column：数据库字段-->
+    <!--property:实体类字段-->
+    <resultMap id="projectVersionMap" type="indi.wgx.pojo.ProjectVersion">
+        <id property="projectVersionId" column="project_version_id" ></id>
+        <result property="projectId" column="project_id"></result>
+        <result property="projectName" column="project_name"></result>
+        <result property="projectVersion" column="project_version"></result>
+        <result property="gmtCreate" column="gmt_create"></result>
+        <result property="gmtModified" column="gmt_modified"></result>
+    </resultMap>
+
+    <select id="getProjectList" resultMap="projectVersionMap">
+        select project_version_id, project_id, project_name, project_version, gmt_create, gmt_modified from project_version;
+    </select>
+
+    <!--注意：resultType返回的是集合中的元素类型，而不是集合本身-->
+    <select id="getProjectNameList" resultType="String">
+        select distinct project_name from project_version
+    </select>
+
+    <select id="getProjectVersionIdList" resultType="Long">
+        select project_version_id from project_version
+    </select>
+
+</mapper>

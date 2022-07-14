@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="indi.wgx.mapper.SqlMapper">
+
+
+    <resultMap id="sqlExecutionMap" type="indi.wgx.pojo.SqlExecution">
+        <id property="executionId" column="execution_id" ></id>
+        <result property="sqlTemplateId" column="sql_template_id"></result>
+        <result property="sqlContent" column="sql_content"></result>
+        <result property="contentScore" column="content_score"></result>
+        <result property="sqlTime" column="sql_time"></result>
+        <result property="timeScore" column="time_score"></result>
+    </resultMap>
+
+
+    <select id="getSqlExecution" resultMap="sqlExecutionMap">
+        select execution_id, sql_template_id, sql_content, content_score, sql_time, time_score
+        from sql_execution where execution_id = #{execution_id};
+    </select>
+
+
+    <resultMap id="orderedScoreMap" type="indi.wgx.vo.OrderedScoreVo">
+<!--        <id property="projectVersionId" column="project_version_id" ></id>-->
+        <result property="projectId" column="project_id"></result>
+        <result property="projectName" column="project_name"></result>
+        <result property="projectVersion" column="project_version"></result>
+        <result property="tableName" column="table_name"></result>
+        <result property="sqlTemplate" column="sql_template"></result>
+        <result property="sqlContent" column="sql_content"></result>
+        <result property="templateScore" column="template_score"></result>
+        <result property="contentScore" column="content_score"></result>
+    </resultMap>
+    <select id="getAllOrderedScore" parameterType="Long" resultMap="orderedScoreMap">
+        select project_id, project_name, project_version, table_name, sql_content, content_score,  sql_template, template_score
+        from project_version pv
+            left join sql_template st
+                on pv.project_version_id = st.project_version_id
+            left join sql_execution se
+                on st.sql_template_id = se.sql_template_id
+        where pv.project_version_id = #{projectVersionId}
+        order by sql_content DESC
+    </select>
+
+
+    <resultMap id="highTimeSqlMap" type="indi.wgx.vo.HighTimeSqlVo">
+        <result property="projectId" column="project_id"></result>
+        <result property="projectName" column="project_name"></result>
+        <result property="tableName" column="table_name"></result>
+        <result property="sqlContent" column="sql_content"></result>
+        <result property="sqlTime" column="sql_time"></result>
+    </resultMap>
+
+
+    <select id="getHighTimeSQL" resultMap="highTimeSqlMap">
+        select project_id, project_name, table_name, sql_content, sql_time
+        from project_version pv
+             left join sql_template st
+                 on pv.project_version_id = st.project_version_id
+             left join sql_execution se
+                 on st.sql_template_id = se.sql_template_id
+        where pv.project_version_id = #{projectVersionId}
+        and sql_time > #{sqlTime}
+        order by sql_time desc;
+    </select>
+
+
+    <select id = "getProjectVersionId" resultType = "Long">
+        select project_version_id from project_version where project_id = #{projectId} and project_version = #{projectVersion}
+    </select>
+
+    <select id="getSqlTemplateId" resultType = "Long">
+        select sql_template_id from sql_template where project_version_id = #{projectVersionId} and sql_template = #{sqlTemplate}
+    </select>
+
+    <select id="getExecutionId" resultType="Long">
+        select execution_id from sql_execution where sql_template_id = #{sqlTemplateId} and sql_content = #{sqlContent}
+    </select>
+
+
+    <resultMap id="sqlScoreByConditionMap" type="indi.wgx.response.QueryResponse">
+        <result property="projectId" column="project_id"></result>
+        <result property="projectName" column="project_name"></result>
+        <result property="projectVersion" column="project_version"></result>
+
+        <result property="sqlTemplate" column="sql_template"></result>
+        <result property="templateScore" column="template_score"></result>
+        <result property="tableName" column="table_name"></result>
+
+        <result property="minScoreSqlContext" column="min_score_sql_context"></result>
+        <result property="averageSqlTime" column="average_sql_time"></result>
+        <result property="maxSqlTime" column="max_sql_time"></result>
+        <result property="minSqlTime" column="min_sql_time"></result>
+    </resultMap>
+
+
+    <!--https://blog.csdn.net/weixin_51495453/article/details/111318080-->
+    <select id="getSqlScoreByCondition" parameterType="indi.wgx.request.QueryRequest" resultMap="sqlScoreByConditionMap">
+        select distinct project_id, project_name, project_version, sql_template,
+               template_score, table_name, min_score_sql_context, average_sql_time, max_sql_time, min_sql_time
+        from project_version pv
+                 left join sql_template st
+                           on pv.project_version_id = st.project_version_id
+                 left join sql_execution se
+                           on st.sql_template_id = se.sql_template_id
+        <where>
+            <if test="projectName != null and projectName != ''">
+                project_name = #{projectName}
+            </if>
+            <if test="projectVersions != null and projectVersions.size > 0">
+                and project_version in
+                <foreach collection="projectVersions" item="item" index="index" separator="," open="(" close=")">
+                    #{projectVersions[${index}], jdbcType=BIGINT}
+                </foreach>
+            </if>
+            <if test="tableNames != null and tableNames.size > 0">
+                <!--这里要对表名用模糊匹配查询-->
+                <!--这里通过正则表达式完成：https://qa.1r1g.com/sf/ask/42755751/-->
+                and table_name REGEXP #{tableNames[0], jdbcType=VARCHAR}
+<!--                <foreach collection="tableNames" item="item" index="index" separator="," open="(" close=")">-->
+<!--                    #{tableNames[${index}], jdbcType=VARCHAR}-->
+<!--                </foreach>-->
+            </if>
+            <if test="sqlTemplates != null and sqlTemplates.size > 0">
+                and sql_template in
+                <foreach collection="sqlTemplates" item="item" index="index" separator="," open="(" close=")">
+                    #{sqlTemplates[${index}], jdbcType=VARCHAR}
+                </foreach>
+            </if>
+<!--            <if test="orderBy != null and orderWay != null">-->
+<!--                ORDER BY #{orderBy} #{orderWay}-->
+<!--            </if>-->
+        </where>
+        <!--limit #{currentPage}, #{pageSize}-->
+    </select>
+
+    <select id="getSqlTemplateList" resultType="String">
+        select distinct sql_template from sql_template;
+    </select>
+
+</mapper>
